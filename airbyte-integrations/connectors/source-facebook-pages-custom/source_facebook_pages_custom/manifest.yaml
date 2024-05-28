@@ -1,0 +1,408 @@
+version: 0.89.0
+
+type: DeclarativeSource
+
+check:
+  type: CheckStream
+  stream_names:
+    - video_sources
+
+definitions:
+  streams:
+    videos:
+      type: DeclarativeStream
+      name: videos
+      retriever:
+        type: SimpleRetriever
+        paginator:
+          type: DefaultPaginator
+          page_token_option:
+            type: RequestOption
+            field_name: after
+            inject_into: request_parameter
+          pagination_strategy:
+            type: CursorPagination
+            path: act_{{config['account_id']}}/ads
+            page_size: 200
+            $parameters:
+              path: act_{{config['account_id']}}/ads
+              request_parameters:
+                fields: creative{asset_feed_spec{videos{video_id}}}
+                access_token: '{{ config[''access_token''] }}'
+            cursor_value: '{{ response[''paging''].get(''cursors'', {}).get(''after'') }}'
+            stop_condition: >-
+              {{ not response.get('paging') or response.paging == '' or not
+              response.paging.get('next') }}
+            request_parameters:
+              fields: creative{asset_feed_spec{videos{video_id}}}
+              access_token: '{{ config[''access_token''] }}'
+        requester:
+          $ref: '#/definitions/base_requester'
+          path: act_{{config['account_id']}}/ads
+          http_method: GET
+          error_handler:
+            type: CompositeErrorHandler
+            error_handlers:
+              - type: DefaultErrorHandler
+                path:
+                  '[object Object]': null
+                $parameters:
+                  path:
+                    '[object Object]': null
+                  request_parameters:
+                    fields: id,source
+                    access_token: '{{ config[''page_token''] }}'
+                response_filters:
+                  - type: HttpResponseFilter
+                    path:
+                      '[object Object]': null
+                    action: RETRY
+                    $parameters:
+                      path:
+                        '[object Object]': null
+                      request_parameters:
+                        fields: id,source
+                        access_token: '{{ config[''page_token''] }}'
+                    error_message: RATE LIMIT HIT
+                    request_parameters:
+                      fields: id,source
+                      access_token: '{{ config[''page_token''] }}'
+                    error_message_contains: There have been too many calls to this ad-account
+                backoff_strategies:
+                  - type: ConstantBackoffStrategy
+                    path:
+                      '[object Object]': null
+                    $parameters:
+                      path:
+                        '[object Object]': null
+                      request_parameters:
+                        fields: id,source
+                        access_token: '{{ config[''page_token''] }}'
+                    request_parameters:
+                      fields: id,source
+                      access_token: '{{ config[''page_token''] }}'
+                    backoff_time_in_seconds: 600
+                request_parameters:
+                  fields: id,ssource
+                  access_token: '{{ config[''page_token''] }}'
+          request_parameters:
+            fields: creative{asset_feed_spec{videos{video_id}}}
+            access_token: '{{ config[''access_token''] }}'
+            bulk_pagination: 'true'
+        record_selector:
+          type: RecordSelector
+          extractor:
+            type: DpathExtractor
+            field_path:
+              - data
+              - '*'
+              - creative
+              - asset_feed_spec
+              - videos
+              - '*'
+          schema_normalization: Default
+      schema_loader:
+        type: InlineSchemaLoader
+        schema:
+          $ref: '#/schemas/videos'
+    video_ids:
+      type: DeclarativeStream
+      name: video_ids
+      retriever:
+        type: SimpleRetriever
+        paginator:
+          type: DefaultPaginator
+          page_token_option:
+            type: RequestOption
+            field_name: after
+            inject_into: request_parameter
+          pagination_strategy:
+            type: CursorPagination
+            path: act_{{config['account_id']}}/adcreatives
+            page_size: 200
+            $parameters:
+              path: act_{{config['account_id']}}/adcreatives
+              request_parameters:
+                fields: id,name,source_instagram_media_id
+                access_token: '{{ config[''access_token''] }}'
+            cursor_value: '{{ response[''paging''].get(''cursors'', {}).get(''after'') }}'
+            stop_condition: >-
+              {{ not response.get('paging') or response.paging == '' or not
+              response.paging.get('next') }}
+            request_parameters:
+              fields: id,name,source_instagram_media_id
+              access_token: '{{ config[''access_token''] }}'
+        requester:
+          $ref: '#/definitions/base_requester'
+          path: act_{{config['account_id']}}/ads
+          http_method: GET
+          error_handler:
+            type: CompositeErrorHandler
+            error_handlers:
+              - type: DefaultErrorHandler
+                path:
+                  '[object Object]': null
+                $parameters:
+                  path:
+                    '[object Object]': null
+                  request_parameters:
+                    fields: id,source
+                    access_token: '{{ config[''page_token''] }}'
+                response_filters:
+                  - type: HttpResponseFilter
+                    path:
+                      '[object Object]': null
+                    action: RETRY
+                    $parameters:
+                      path:
+                        '[object Object]': null
+                      request_parameters:
+                        fields: id,source
+                        access_token: '{{ config[''page_token''] }}'
+                    error_message: RATE LIMIT HIT
+                    request_parameters:
+                      fields: id,source
+                      access_token: '{{ config[''page_token''] }}'
+                    error_message_contains: There have been too many calls to this ad-account
+                backoff_strategies:
+                  - type: ConstantBackoffStrategy
+                    path:
+                      '[object Object]': null
+                    $parameters:
+                      path:
+                        '[object Object]': null
+                      request_parameters:
+                        fields: id,source
+                        access_token: '{{ config[''page_token''] }}'
+                    request_parameters:
+                      fields: id,source
+                      access_token: '{{ config[''page_token''] }}'
+                    backoff_time_in_seconds: 600
+                request_parameters:
+                  fields: id,ssource
+                  access_token: '{{ config[''page_token''] }}'
+          request_parameters:
+            fields: creative{video_id}
+            access_token: '{{ config[''access_token''] }}'
+            bulk_pagination: 'true'
+        record_selector:
+          type: RecordSelector
+          extractor:
+            type: DpathExtractor
+            field_path:
+              - data
+              - '*'
+              - creative
+          record_filter:
+            type: RecordFilter
+            condition: '{{ ''video_id'' in record }}'
+      schema_loader:
+        type: InlineSchemaLoader
+        schema:
+          $ref: '#/schemas/video_ids'
+      transformations:
+        - type: RemoveFields
+          field_pointers:
+            - - id
+    video_sources:
+      type: DeclarativeStream
+      name: video_sources
+      retriever:
+        type: SimpleRetriever
+        requester:
+          $ref: '#/definitions/base_requester'
+          path: '{{ stream_partition.video_id }}'
+          http_method: GET
+          error_handler:
+            type: CompositeErrorHandler
+            error_handlers:
+              - type: DefaultErrorHandler
+                path:
+                  '[object Object]': null
+                $parameters:
+                  path:
+                    '[object Object]': null
+                  request_parameters:
+                    fields: id,source
+                    access_token: '{{ config[''page_token''] }}'
+                response_filters:
+                  - type: HttpResponseFilter
+                    path:
+                      '[object Object]': null
+                    action: RETRY
+                    $parameters:
+                      path:
+                        '[object Object]': null
+                      request_parameters:
+                        fields: id,source
+                        access_token: '{{ config[''page_token''] }}'
+                    error_message: RATE LIMIT HIT
+                    request_parameters:
+                      fields: id,source
+                      access_token: '{{ config[''page_token''] }}'
+                    error_message_contains: There have been too many calls to this ad-account
+                backoff_strategies:
+                  - type: ConstantBackoffStrategy
+                    path:
+                      '[object Object]': null
+                    $parameters:
+                      path:
+                        '[object Object]': null
+                      request_parameters:
+                        fields: id,source
+                        access_token: '{{ config[''page_token''] }}'
+                    request_parameters:
+                      fields: id,source
+                      access_token: '{{ config[''page_token''] }}'
+                    backoff_time_in_seconds: 600
+                request_parameters:
+                  fields: id,ssource
+                  access_token: '{{ config[''page_token''] }}'
+          request_parameters:
+            fields: id,source,permalink_url
+            access_token: '{{ config[''page_token''] }}'
+            bulk_pagination: 'true'
+        record_selector:
+          type: RecordSelector
+          extractor:
+            type: DpathExtractor
+            field_path: []
+        partition_router:
+          - type: SubstreamPartitionRouter
+            parent_stream_configs:
+              - type: ParentStreamConfig
+                stream:
+                  $ref: '#/definitions/streams/videos'
+                parent_key: video_id
+                partition_field: video_id
+          - type: SubstreamPartitionRouter
+            parent_stream_configs:
+              - type: ParentStreamConfig
+                stream:
+                  $ref: '#/definitions/streams/video_ids'
+                parent_key: video_id
+                partition_field: video_id
+      schema_loader:
+        type: InlineSchemaLoader
+        schema:
+          $ref: '#/schemas/video_sources'
+      transformations:
+        - type: AddFields
+          fields:
+            - path:
+                - video_id
+              value: '{{record[''id'']}}'
+        - type: RemoveFields
+          field_pointers:
+            - - id
+        - type: AddFields
+          fields:
+            - path:
+                - account_id
+              value: '{{ config[''account_id''] }}'
+  base_requester:
+    type: HttpRequester
+    url_base: https://graph.facebook.com/v19.0
+
+streams:
+  - $ref: '#/definitions/streams/video_sources'
+  - $ref: '#/definitions/streams/videos'
+  - $ref: '#/definitions/streams/video_ids'
+
+spec:
+  type: Spec
+  connection_specification:
+    type: object
+    $schema: http://json-schema.org/draft-07/schema#
+    required:
+      - page_token
+      - page_id
+      - account_id
+      - access_token
+    properties:
+      page_id:
+        type: string
+        order: 2
+        title: page_id
+      account_id:
+        type: string
+        order: 3
+        title: account_id
+      page_token:
+        type: string
+        order: 0
+        title: page token
+        description: >-
+          Your API Access Key. See <a
+          href="https://exchangeratesapi.io/documentation/">here</a>. The key is
+          case sensitive.
+        airbyte_secret: true
+      access_token:
+        type: string
+        order: 4
+        title: access_token
+      updated_since:
+        type: integer
+        order: 1
+        title: updated_since
+        description: >-
+          Must be a unix timestamp - determines which ads to pull based on
+          whether they have been updated since the timestamp given.
+    additionalProperties: true
+
+metadata:
+  yamlComponents:
+    streams:
+      videos:
+        - paginator
+        - errorHandler
+      video_ids:
+        - paginator
+        - errorHandler
+      video_sources:
+        - errorHandler
+  autoImportSchema:
+    videos: false
+    video_ids: true
+    video_sources: true
+
+schemas:
+  videos:
+    type: object
+    $schema: http://json-schema.org/schema#
+    properties:
+      video_id:
+        type:
+          - string
+          - 'null'
+    additionalProperties: true
+  video_ids:
+    type: object
+    $schema: http://json-schema.org/schema#
+    properties:
+      video_id:
+        type:
+          - string
+          - 'null'
+    additionalProperties: true
+  video_sources:
+    type: object
+    $schema: http://json-schema.org/schema#
+    properties:
+      source:
+        type:
+          - string
+          - 'null'
+      video_id:
+        type:
+          - number
+          - 'null'
+      account_id:
+        type:
+          - number
+          - 'null'
+      permalink_url:
+        type:
+          - string
+          - 'null'
+    additionalProperties: true
