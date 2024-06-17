@@ -78,19 +78,9 @@
       "description": "The current status of the ad.",
       "type": ["null", "string"]
     },
-    "creative": {
-      "description": "Details of the creative used in the ad",
-      "type": ["null", "object"],
-      "properties": {
-        "creative_id": {
-          "description": "The unique identifier for the creative used in the ad.",
-          "type": ["null", "string"]
-        },
-        "id": {
-          "description": "The unique identifier for the creative.",
-          "type": ["null", "string"]
-        }
-      }
+    "creative{link_url,body,image_url,id,account_id,call_to_action_type,title,name,object_id,object_type,product_set_id,image_hash,video_id,asset_feed_spec{carousels{child_attachments},ad_formats,bodies{text},captions{text},descriptions{text},images{hash,url},link_urls{deeplink_url,display_url,website_url},titles{text},videos{video_id}},object_story_spec{link_data{caption,child_attachments{image_hash,link,caption,picture,description,name,video_id},link,description,message,image_hash,picture,name},photo_data{caption,image_hash},text_data{message},video_data{image_hash,image_url,title,video_id}, template_data{child_attachments,link,message,name,picture,image_hash}}}": {
+      "description": "The creatives for the ad.",
+      "type": ["null", "object"]
     },
     "id": {
       "description": "The unique identifier for the ad.",
